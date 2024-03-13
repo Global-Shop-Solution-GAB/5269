@@ -1,0 +1,1015 @@
+Program.Sub.ScreenSU.Start
+Gui.frmForecastParts..Create
+Gui.frmForecastParts..Caption("Consolidated Part Forecast - Labor and Material")
+Gui.frmForecastParts..Size(9105,9015)
+Gui.frmForecastParts..MinX(9105)
+Gui.frmForecastParts..MinY(9015)
+Gui.frmForecastParts..Position(0,0)
+Gui.frmForecastParts..BackColor(-2147483633)
+Gui.frmForecastParts..MousePointer(0)
+Gui.frmForecastParts..Event(UnLoad,frmForecastParts_UnLoad)
+Gui.frmForecastParts.pbStatus.Create(ProgressBar)
+Gui.frmForecastParts.pbStatus.Visible(False)
+Gui.frmForecastParts.pbStatus.Size(2730,255)
+Gui.frmForecastParts.pbStatus.Position(1980,8370)
+Gui.frmForecastParts.lblStatus.Create(Label,"Loading...",False,1890,240,0,30,8445,True,0,"Arial",8,-986896,0)
+Gui.frmForecastParts.GsGCParts.Create(GsGridControl)
+Gui.frmForecastParts.GsGCParts.Size(8910,8250)
+Gui.frmForecastParts.GsGCParts.Position(30,30)
+Gui.frmForecastParts.GsGCParts.Anchor(15)
+Gui.frmForecastParts.cmdForecast.Create(Button)
+Gui.frmForecastParts.cmdForecast.Size(900,375)
+Gui.frmForecastParts.cmdForecast.Position(8040,8325)
+Gui.frmForecastParts.cmdForecast.Caption("Forecast")
+Gui.frmForecastParts.cmdForecast.Event(Click,cmdForecast_Click)
+Gui.frmForecastParts.cmdForecast.Anchor(10)
+Gui.frmForecastParts.chkQtyFilter.Create(CheckBox)
+Gui.frmForecastParts.chkQtyFilter.Size(1470,360)
+Gui.frmForecastParts.chkQtyFilter.Position(6510,8355)
+Gui.frmForecastParts.chkQtyFilter.Caption("Selected Parts")
+Gui.frmForecastParts.chkQtyFilter.Event(Click,chkQtyFilter_Click)
+Gui.frmForecastParts.chkQtyFilter.Anchor(10)
+Gui.frmSummary..Create
+Gui.frmSummary..Caption("Forecast Summary")
+Gui.frmSummary..Size(10620,9195)
+Gui.frmSummary..MinX(0)
+Gui.frmSummary..MinY(0)
+Gui.frmSummary..Position(0,0)
+Gui.frmSummary..BackColor(-2147483633)
+Gui.frmSummary..MousePointer(0)
+Gui.frmSummary..Event(Resize,frmSummary_Resize)
+Gui.frmSummary..Event(UnLoad,frmSummary_UnLoad)
+Gui.frmSummary.frameLabor.Create(Frame)
+Gui.frmSummary.frameLabor.Size(10425,4155)
+Gui.frmSummary.frameLabor.Position(60,60)
+Gui.frmSummary.frameLabor.Caption("Labor")
+Gui.frmSummary.GsGCLabor.Create(GsGridControl)
+Gui.frmSummary.GsGCLabor.Size(10335,3855)
+Gui.frmSummary.GsGCLabor.Position(45,225)
+Gui.frmSummary.GsGCLabor.Parent("frameLabor")
+Gui.frmSummary.GsGCLabor.Anchor(15)
+Gui.frmSummary.frameMaterial.Create(Frame)
+Gui.frmSummary.frameMaterial.Size(10425,4155)
+Gui.frmSummary.frameMaterial.Position(60,4305)
+Gui.frmSummary.frameMaterial.Caption("Material")
+Gui.frmSummary.GsGCMaterial.Create(GsGridControl)
+Gui.frmSummary.GsGCMaterial.Size(10335,3855)
+Gui.frmSummary.GsGCMaterial.Position(45,225)
+Gui.frmSummary.GsGCMaterial.Parent("frameMaterial")
+Gui.frmSummary.GsGCMaterial.Anchor(15)
+Gui.frmSummary.cmdOK.Create(Button)
+Gui.frmSummary.cmdOK.Size(855,375)
+Gui.frmSummary.cmdOK.Position(9630,8475)
+Gui.frmSummary.cmdOK.Anchor(10)
+Gui.frmSummary.cmdOK.Caption("OK")
+Gui.frmSummary.cmdOK.Event(Click,frmSummary_UnLoad)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+	V.Global.sForecastPrefix.Declare
+	V.Global.iForecastSuffix.Declare
+	V.Global.sGsGCIcon.Declare
+	V.Global.iOpts.Declare
+	V.Global.iOpts.Set(-1)
+	V.Global.sGlobalFile.Declare
+	V.Global.sBackupFile.Declare
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	v.Local.sIcon.Declare
+
+	'Set Icon on GAB Screen
+	F.Intrinsic.String.Build("{0}\gss2.ico",v.Caller.ArtDir,v.Local.sIcon)
+	Gui.frmForecastParts..Icon(V.Local.sIcon)
+	Gui.frmSummary..Icon(V.Local.sIcon)
+	
+	'Set Logo in GsGridControl Group Header
+	F.Intrinsic.String.Build("{0}\GAB_GSS_Logo_Green_Dash.png",V.Caller.ArtDir,V.Global.sGsGCIcon)
+	
+	F.ODBC.Connection!con.OpenCompanyConnection
+	
+	'Lock File by User
+	F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","CREATE")
+	
+	Gui.frmForecastParts..Show
+	
+	F.Intrinsic.Control.CallSub(LoadParts)
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.frmForecastParts_UnLoad.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	'Remove File by User
+	F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+	
+	F.ODBC.Connection!con.Close
+	F.Intrinsic.Control.End 
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.frmForecastParts_UnLoad.End
+
+Program.Sub.chkQtyFilter_Click.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	F.Intrinsic.Control.If(V.Screen.frmForecastParts!chkQtyFilter.Value,=,0)
+		Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","ActiveFilterString","")
+	F.Intrinsic.Control.Else
+		Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","ActiveFilterString","[Quantity] <> 0")
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.chkQtyFilter_Click.End
+
+Program.Sub.CreateRemoveLock.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.sDir.Declare
+	V.Local.sFiles.Declare
+	V.Local.sFile.Declare
+	V.Local.bFile.Declare
+	V.Local.sFileInfo.Declare
+	
+	F.Intrinsic.String.Build("{0}\GAB_5269_Backups",V.Caller.FilesDir,V.Local.sDir)
+	F.Intrinsic.File.CreateDir(V.Local.sDir)
+
+	F.Intrinsic.String.Build("{0}\GAB_5269_FORECAST.lck",V.Local.sDir,V.Local.sFile)
+	
+	F.Intrinsic.Control.SelectCase(V.Args.Action)
+		F.Intrinsic.Control.Case("CREATE")
+			F.Intrinsic.File.Exists(V.Local.sFile,V.Local.bFile)
+			F.Intrinsic.Control.If(V.Local.bFile)
+				F.Intrinsic.File.File2String(V.Local.sFile,V.Local.sFileInfo)
+				F.Intrinsic.UI.Msgbox(V.Local.sFileInfo,"Program In Use")
+				F.Intrinsic.Control.End
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Build("User: {1}{0}Date/Time: {2}",V.Ambient.NewLine,V.Caller.User,V.Ambient.Now,V.Local.sFileInfo)
+				F.Intrinsic.File.String2File(V.Local.sFile,V.Local.sFileInfo)
+			F.Intrinsic.Control.EndIf
+			
+		F.Intrinsic.Control.Case("REMOVE")
+			F.Intrinsic.File.Exists(V.Local.sFile,V.Local.bFile)
+			F.Intrinsic.Control.If(V.Local.bFile)
+				F.Intrinsic.File.DeleteFile(V.Local.sFile)
+			F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndSelect
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.CreateRemoveLock.End
+
+Program.Sub.LoadParts.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	Gui.frmForecastParts.lblStatus.Caption("Loading Parts...")
+	Gui.frmForecastParts.lblStatus.Visible(True)
+
+	F.Intrinsic.Control.If(V.DataTable.dtParts.Exists)
+		F.Data.Datatable.Close("dtParts")
+	F.Intrinsic.Control.EndIf
+	
+	'F.Data.DataTable.CreateFromSQL("dtParts","con","Select A.Part,A.Location,A.Description,A.Product_Line From V_Inventory_Mstr A Join V_Inventory_Mst2 B On A.Part = B.Part And A.Location = B.Location Where B.Code_Source In ('M','F') Order By A.Part,A.Location;",True)
+	F.Data.DataTable.CreateFromSQL("dtParts","con","SELECT V_BOM_MSTR.PARENT AS PART, V_BOM_ENG.DESCRIPTION FROM V_BOM_MSTR LEFT JOIN V_BOM_ENG ON V_BOM_MSTR.PARENT = V_BOM_ENG.PART WHERE V_BOM_MSTR.SEQUENCE_BOM = '0000' ORDER BY PARENT;",True)
+	F.Data.DataTable.AddColumn("dtParts","Quantity",Float,0)
+	F.Data.DataTable.AddColumn("dtParts","DueDate",Date,12/31/2030)
+
+	F.Intrinsic.Control.CallSub(LoadGVParts)
+	
+	Gui.frmForecastParts.lblStatus.Visible(False)
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.LoadParts.End
+
+Program.Sub.LoadGVParts.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.sValues.Declare
+	V.Local.iCnt.Declare
+	V.Local.sColumns.Declare
+	
+	'Set and Format Grid
+	Gui.frmForecastParts.GsGCParts.AddGridViewFromDataTable("gvParts","dtParts")
+	Gui.frmForecastParts.GsGCParts.Icon(V.Global.sGsGCIcon)
+	Gui.frmForecastParts.GsGCParts.SuspendLayout()
+	Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","MultiSelect",True)
+	Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","AllowSort",True)
+	Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","AllowFilter",True)
+	Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","OptionsDetailShowDetailTabs",False)
+	Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","OptionsViewShowGroupPanel",True)
+	Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","EnableAppearanceOddRow",True)
+	Gui.frmForecastParts.GsGCParts.SetGridViewProperty("gvParts","OptionsFindAlwaysVisible",True)
+	
+	'Loop through columns names by using the V.DataTable.dtName.FieldNames
+	F.Intrinsic.String.Split(V.DataTable.dtParts.FieldNames,"*!*",V.Local.sColumns)
+	F.Intrinsic.Control.For(V.Local.iCnt,0,V.Local.sColumns.UBound,1)
+		Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts",V.Local.sColumns(V.Local.iCnt),"HeaderFontBold",True)
+		Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts",V.Local.sColumns(V.Local.iCnt),"HeaderHAlignment","Center")
+	F.Intrinsic.Control.Next(V.Local.iCnt)
+	
+	'Part
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Part","Caption","Part")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Part","MinWidth","130")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Part","AllowEdit",False)
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Part","ReadOnly",True)
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Part","CellHAlignment","Left")
+	
+'	'Location
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Location","Caption","Loc")
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Location","MinWidth","45")
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Location","AllowEdit",False)
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Location","ReadOnly",True)
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Location","CellHAlignment","Center")
+	
+	'Description
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Description","Caption","Description")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Description","MinWidth","175")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Description","AllowEdit",False)
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Description","ReadOnly",True)
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Description","CellHAlignment","Left")
+	
+'	'Product_Line
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Product_Line","Caption","PL")
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Product_Line","MinWidth","45")
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Product_Line","AllowEdit",False)
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Product_Line","ReadOnly",True)
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Product_Line","CellHAlignment","Center")
+	
+	'Quantity
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Quantity","Caption","Quantity")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Quantity","MinWidth","75")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Quantity","AllowEdit",True)
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Quantity","ReadOnly",False)
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Quantity","CellHAlignment","Far")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Quantity","DisplayCustomNumeric","#,###,##0.00")
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","Quantity","CellBackColor","LightYellow")
+	
+	'DueDate
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","DueDate","Caption","Due Date")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","DueDate","MinWidth","85")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","DueDate","AllowEdit",True)
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","DueDate","ReadOnly",False)
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","DueDate","CellHAlignment","Center")
+	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","DueDate","DisplayCustomDatetime","d")
+'	Gui.frmForecastParts.GsGCParts.SetColumnProperty("gvParts","DueDate","CellBackColor","LightYellow")
+	
+	Gui.frmForecastParts.GsGCParts.ResumeLayout()
+	Gui.frmForecastParts.GsGCParts.MainView("gvParts")
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.LoadGVParts.End
+
+Program.Sub.cmdForecast_Click.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	V.Local.sSelect.Declare
+	V.Local.bForecast.Declare
+	V.Local.bOptions.Declare
+	
+	F.Data.DataTable.Select("dtParts","Quantity <> 0",V.Local.sSelect)
+	F.Intrinsic.Control.If(V.Local.sSelect.IsNoReturn)
+		F.Intrinsic.UI.Msgbox("None of the parts have a quantity > 1.","Forecast")
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+	
+	Gui.frmForecastParts.lblStatus.Caption("Clearing Forecast....")
+	Gui.frmForecastParts.lblStatus.Visible(True)
+	Gui.frmForecastParts.pbStatus.Visible(True)
+	Gui.frmForecastParts.pbStatus.Min(0)
+	Gui.frmForecastParts.pbStatus.Max(100)
+	Gui.frmForecastParts.pbStatus.Value(0)
+	
+	'Create Backup Directory and Copy Files
+	F.Intrinsic.Control.CallSub(CreateBackups)
+	Gui.frmForecastParts.pbStatus.Value(8)
+	
+	'Store Current Forecast Data
+	Gui.frmForecastParts.lblStatus.Caption("Storing Current Forecast Data....")
+	F.Intrinsic.Control.CallSub(StoreCurrentForecastData)
+	Gui.frmForecastParts.pbStatus.Value(16)
+	
+	'Remove Forecast Data
+	Gui.frmForecastParts.lblStatus.Caption("Removing Current Forecast Data....")
+	F.Intrinsic.Control.CallSub(RemoveForecastData,"APS",False)
+	Gui.frmForecastParts.pbStatus.Value(24)
+	
+	'Store Current Options
+	Gui.frmForecastParts.lblStatus.Caption("Storing Current Forecast Options....")
+	F.Intrinsic.Control.CallSub(StoreCurrentOptions)
+	Gui.frmForecastParts.pbStatus.Value(32)
+	
+	'Update Options
+	Gui.frmForecastParts.lblStatus.Caption("Updating Forecast Options....")
+	F.Intrinsic.Control.CallSub(UpdateOptions)
+	Gui.frmForecastParts.pbStatus.Value(40)
+	
+	'Load Forecast
+	Gui.frmForecastParts.lblStatus.Caption("Loading Forecast....")
+	F.Intrinsic.Control.CallSub(LoadForecast)
+	Gui.frmForecastParts.pbStatus.Value(48)
+	
+	'Schedule Forecast
+	Gui.frmForecastParts.lblStatus.Caption("Scheduling Forecast....")
+	F.Global.General.CallWrapperSync(50,"FC0007")
+	Gui.frmForecastParts.pbStatus.Value(56)
+	
+	'Pull Data out of Pervasive
+	Gui.frmForecastParts.lblStatus.Caption("Storing Forecast Data....")
+	F.Intrinsic.Control.CallSub(PullForecastSummaryData)
+	Gui.frmForecastParts.pbStatus.Value(64)
+	
+	'Revert Options Back
+	Gui.frmForecastParts.lblStatus.Caption("Reverting Forecast Options....")
+	F.Intrinsic.Control.CallSub(RevertOptionsBack)
+	Gui.frmForecastParts.pbStatus.Value(72)
+	
+	'Remove Forecast Data
+	F.Intrinsic.Control.CallSub(RemoveForecastData,"APS",True)
+	Gui.frmForecastParts.pbStatus.Value(80)
+	
+	'Save Original Forecast
+	Gui.frmForecastParts.lblStatus.Caption("Reverting Forecast Data....")
+	F.Intrinsic.Control.CallSub(SaveOriginalForecast)
+	Gui.frmForecastParts.pbStatus.Value(88)
+	
+	'Remove File by User
+	F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+	Gui.frmForecastParts.pbStatus.Value(100)
+	
+	'Hide main screen and Display results
+	Gui.frmForecastParts.lblStatus.Visible(False)
+	Gui.frmForecastParts.pbStatus.Visible(False)
+	Gui.frmForecastParts..Visible(False)
+	F.Intrinsic.Control.CallSub(SetContextMenu)
+	F.Intrinsic.Control.CallSub(LaborSummary)
+	F.Intrinsic.Control.CallSub(MaterialSummary)
+	Gui.frmSummary..Show
+	Gui.frmSummary..AlwaysOnTop(True)
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.cmdForecast_Click.End
+
+Program.Sub.CreateBackups.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.sDir.Declare
+	V.Local.sFiles.Declare
+	V.Local.iFiles.Declare
+	V.Local.iCnt.Declare
+	V.Local.sDirDelete.Declare
+	V.Local.sGlobalFile.Declare
+	V.Local.sBackupFile.Declare
+	
+	'Cleanup Backups Folder
+	F.Intrinsic.String.Build("{0}\GAB_5269_Backups\",V.Caller.FilesDir,V.Local.sDir)
+	F.Intrinsic.File.GetFileList(V.Local.sDir,16,V.Local.sFiles)
+	F.Intrinsic.String.Split(V.Local.sFiles,":",V.Local.sFiles)
+	F.Intrinsic.Control.If(V.Local.sFiles.UBound,>,4)
+		F.Intrinsic.Math.Sub(V.Local.sFiles.UBound,5,V.Local.iFiles)
+		F.Intrinsic.Control.For(V.Local.iCnt,0,V.Local.iFiles,1)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sDir,V.Local.sFiles(V.Local.iCnt),V.Local.sDirDelete)
+			F.Intrinsic.File.DeleteDir(V.Local.sDirDelete,True)
+		F.Intrinsic.Control.Next(V.Local.iCnt)
+	F.Intrinsic.Control.EndIf
+	
+	'Create Backups Folder
+	F.Intrinsic.String.Build("{0}{1}_{2}_{3}",V.Local.sDir,V.Ambient.Date.FormatYYYYMMDD,V.Ambient.Time.FormatHhMm,V.Caller.User,V.Local.sDir)
+	F.Intrinsic.File.CreateDir(V.Local.sDir)
+	
+	V.Local.sFiles.Set("FCAST*!*FCCOM*!*FCDFT*!*FCDTL*!*FCMST*!*FCHST*!*FCIMH*!*FCIML*!*FCOPR*!*FOREQ*!*FCSUM*!*FCXRF")
+	F.Intrinsic.String.Split(V.Local.sFiles,"*!*",V.Local.sFiles)
+	F.Intrinsic.Control.For(V.Local.iCnt,0,V.Local.sFiles.UBound,1)
+		F.Intrinsic.String.Build("{0}\{1}{2}",V.Caller.FilesDir,V.Local.sFiles(V.Local.iCnt),V.Caller.CompanyCode,V.Local.sGlobalFile)
+		F.Intrinsic.String.Build("{0}\{1}{2}",V.Local.sDir,V.Local.sFiles(V.Local.iCnt),V.Caller.CompanyCode,V.Local.sBackupFile)
+		F.Intrinsic.File.CopyFile(V.Local.sGlobalFile,V.Local.sBackupFile)
+		F.Intrinsic.Control.If(V.Local.sFiles(V.Local.iCnt),=,"FCHST")
+			V.Global.sGlobalFile.Set(V.Local.sGlobalFile)
+			V.Global.sBackupFile.Set(V.Local.sBackupFile)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.iCnt)
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.CreateBackups.End
+
+Program.Sub.StoreCurrentForecastData.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	'UPDATE
+	F.ODBC.Connection!con.Execute("UPDATE FORECAST_XREF SET DUE_DATE = '2000-01-01' WHERE DUE_DATE = '1999-11-30';")
+
+	F.Data.DataTable.CreateFromSQL("dtFORECAST","con","SELECT * FROM FORECAST;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTCOMMENTS","con","SELECT * FROM FORECAST_COMMENTS;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTDEFAULTS","con","SELECT * FROM FORECAST_DEFAULTS;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTDETAIL","con","SELECT * FROM FORECAST_DETAIL;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTHEADER","con","SELECT * FROM FORECAST_HEADER;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTHISTORY","con","SELECT * FROM FORECAST_HISTORY;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTIMPORTHDR","con","SELECT * FROM FORECAST_IMPORT_HDR;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTIMPORTLINE","con","SELECT * FROM FORECAST_IMPORT_LINE;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTOPS","con","SELECT * FROM FORECAST_OPS;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTREQ","con","SELECT * FROM FORECAST_REQ;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTSUMMARY","con","SELECT * FROM FORECAST_SUMMARY;",True)
+	F.Data.DataTable.CreateFromSQL("dtFORECASTXREF","con","SELECT * FROM FORECAST_XREF;",True)
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.StoreCurrentForecastData.End
+
+Program.Sub.RemoveForecastData.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_COMMENTS;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_DEFAULTS;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_DETAIL;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_HEADER;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_HISTORY;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_IMPORT_HDR;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_IMPORT_LINE;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_OPS;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_REQ;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_SUMMARY;")
+	F.ODBC.Connection!con.Execute("DELETE FROM FORECAST_XREF;")
+	F.Intrinsic.Control.If(V.Args.APS)
+		F.ODBC.Connection!con.Execute("DELETE FROM APSV3_JBLINES WHERE JOB LIKE 'F999%';")
+		F.ODBC.Connection!con.Execute("DELETE FROM APSV3_JBMASTER WHERE JOB LIKE 'F999%';")
+		F.ODBC.Connection!con.Execute("DELETE FROM APSV3_UBDETAIL WHERE JOB LIKE 'F999%';")
+		F.ODBC.Connection!con.Execute("DELETE FROM SCHED_WO_SUPP WHERE WO LIKE 'F999%';")
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.RemoveForecastData.End
+
+Program.Sub.StoreCurrentOptions.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	'Get Last Forecast ID and Forecast Prefix
+	F.Global.General.ReadOption("360020",2,"",V.Global.iForecastSuffix)
+	F.Global.General.ReadOption("360020",1,"",V.Global.sForecastPrefix)
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.Control.CallSub(RemoveForecastData,"APS",True)
+		F.Intrinsic.Control.CallSub(SaveOriginalForecast)
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.StoreCurrentOptions.End
+
+Program.Sub.UpdateOptions.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	'Update Forecast Prefix and Last Forecast ID
+	F.ODBC.Connection!con.Execute("Update OP_Header Set Ascii_Flag = 'F' Where ID = '360020';")
+	F.ODBC.Connection!con.Execute("Update OP_Header Set Text1 = 'F' Where ID = '360020';")
+	F.ODBC.Connection!con.Execute("Update OP_Header Set F_Numeric = 99900 Where ID = '360020';")
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.Control.CallSub(RemoveForecastData,"APS",True)
+		F.Intrinsic.Control.CallSub(SaveOriginalForecast)
+		F.Intrinsic.Control.CallSub(RevertOptionsBack)
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.UpdateOptions.End
+
+Program.Sub.LoadForecast.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.iCnt.Declare
+	V.Local.iC.Declare
+	V.Local.dKeyDate.Declare
+	V.Local.sKeyTime.Declare
+	V.Local.sKeySeq.Declare
+	V.Local.sExp.Declare
+	V.Local.sSelect.Declare
+	V.Local.sSelect2.Declare
+
+	F.Data.DataTable.CreateFromSQL("dtHdr","con","Select * From FORECAST_IMPORT_HDR;",True)
+	F.Data.DataTable.CreateFromSQL("dtLine","con","Select * From FORECAST_IMPORT_LINE;",True)
+	
+	F.Data.DataTable.Select("dtParts","Quantity <> 0",V.Local.sSelect)
+	F.Intrinsic.Control.If(V.Local.sSelect.IsNotNoReturn)
+		F.Intrinsic.String.Split(V.Local.sSelect,"*!*",V.Local.sSelect)
+		F.Intrinsic.Control.For(V.Local.iCnt,0,V.Local.sSelect.UBound,1)
+			'Create Records for Forecast Header
+			V.Local.dKeyDate.Set(V.Ambient.Date)
+			F.Intrinsic.Math.Add(V.Local.iCnt,1,V.Local.iC)
+			F.Intrinsic.String.LPad(V.Local.iC,"0",8,V.Local.sKeyTime)
+			
+			'Check if Customer and Part already exists, if not create the header record
+			F.Intrinsic.String.Build("PART = '{0}' And LOC = '{1}'",V.DataTable.dtParts(V.Local.sSelect(V.Local.iCnt)).Part!FieldValTrim,"",V.Local.sExp)
+			F.Data.DataTable.Select("dtHdr",V.Local.sExp,V.Local.sSelect2)
+			F.Intrinsic.Control.If(V.Local.sSelect2.IsNoReturn)
+				'Create Header Records
+				F.Data.DataTable.AddRow("dtHdr","KEY_DATE",V.Local.dKeyDate.FormatYYYYMMDD,"KEY_TIME",V.Local.sKeyTime,"CUSTOMER","","PART",V.DataTable.dtParts(V.Local.sSelect(V.Local.iCnt)).Part!FieldValTrim,"LOC","","DESCRIPTION",V.DataTable.dtParts(V.Local.sSelect(V.Local.iCnt)).Description!FieldValTrim,"START_DATE",V.Ambient.Date,"INV_SOURCE","M","IMPORT_SOURCE","M")
+			F.Intrinsic.Control.Else
+				V.Local.sKeyTime.Set(V.DataTable.dtHdr(0).KEY_TIME!FieldVal)
+			F.Intrinsic.Control.EndIf
+			
+			'Check for lines and Add/Create Records for Forecast Line
+			F.Intrinsic.String.Build("KEY_DATE = '{0}' And KEY_TIME = '{1}'",V.Local.dKeyDate.FormatYYYYMMDD,V.Local.sKeyTime,V.Local.sExp)
+			F.Data.DataTable.Select("dtLine",V.Local.sExp,V.Local.sSelect2)
+			F.Intrinsic.Control.If(V.Local.sSelect2.IsNoReturn)
+				F.Intrinsic.String.LPad(V.Local.iC,"0",3,V.Local.sKeySeq)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Split(V.Local.sSelect2,"*!*",V.Local.sSelect2)
+				V.Local.sKeyTime.Set(V.DataTable.dtLine(V.Local.sSelect(V.Local.sSelect2.UBound)).KEY_TIME!FieldVal)
+				V.Local.iC.Set(V.DataTable.dtLine(V.Local.sSelect(V.Local.sSelect2.UBound)).KEY_SEQ!FieldValLong)
+				F.Intrinsic.String.LPad(V.Local.iC.++,"0",3,V.Local.sKeySeq)
+			F.Intrinsic.Control.EndIf
+			'Add Line record
+			F.Data.DataTable.AddRow("dtLine","KEY_DATE",V.Local.dKeyDate.FormatYYYYMMDD,"KEY_TIME",V.Local.sKeyTime,"KEY_SEQ",V.Local.sKeySeq,"REQUIRED",V.DataTable.dtParts(V.Local.sSelect(V.Local.iCnt)).DueDate!FieldVal,"QUANTITY",V.DataTable.dtParts(V.Local.sSelect(V.Local.iCnt)).Quantity!FieldVal,"TYPE","1")
+		F.Intrinsic.Control.Next(V.Local.iCnt)
+	F.Intrinsic.Control.EndIf
+	
+	F.Data.DataTable.SaveToDB("dtHdr","con","FORECAST_IMPORT_HDR","KEY_DATE*!*KEY_TIME",256)
+	F.Data.DataTable.SaveToDB("dtLine","con","FORECAST_IMPORT_LINE","KEY_DATE*!*KEY_TIME*!*KEY_SEQ",256)
+	
+	F.Data.DataTable.Close("dtLine")
+	F.Data.DataTable.Close("dtHdr")
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.Control.CallSub(RemoveForecastData,"APS",True)
+		F.Intrinsic.Control.CallSub(SaveOriginalForecast)
+		F.Intrinsic.Control.CallSub(RevertOptionsBack)
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.LoadForecast.End
+
+Program.Sub.PullForecastSummaryData.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	'Get Labor
+	F.Data.DataTable.CreateFromSQL("dtLbrSum","con","Select RTrim(Part_Workcenter) As Part_Workcenter,Sum(Hours_Estimated) As Hrs From Forecast_Ops Where Job Like 'F999%' And LMO = 'L' And Seq < 995000 Group By Part_Workcenter Order By Part_Workcenter;",True)
+	
+	'Get Material
+	F.Data.DataTable.CreateFromSQL("dtMatlSum","con","Select A.FO_Part,A.FO_Locn,B.Product_Line,B.UM_Inventory,Sum(A.FO_Qty_Ord) As Quantity,B.Qty_OnHand,B.Qty_OnOrder_PO,B.Qty_OnOrder_WO,B.Qty_Required From Forecast_Req A Left Join Inventory_Mstr B On A.FO_Part = B.Part And A.FO_Locn = B.Location Where FO_Number Like 'F999%' And FO_Seq < 995000 And FO_Seq <> '000000' Group By A.FO_Part,A.FO_Locn,B.Product_Line,B.UM_Inventory,B.Qty_OnHand,B.Qty_OnOrder_PO,B.Qty_OnOrder_WO,B.Qty_Required Order By A.FO_Part,A.FO_Locn;",True)
+	
+	'NET = (On Hand + On Order PO + On Order WO) - (Forecast Demand + Requirements)
+	F.Data.DataTable.AddExpressionColumn("dtMatlSum","NET",Float,"([Qty_OnHand] + [Qty_OnOrder_PO] + [Qty_OnOrder_WO]) - ([Quantity] + [Qty_Required])")
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.Control.CallSub(RemoveForecastData,"APS",True)
+		F.Intrinsic.Control.CallSub(SaveOriginalForecast)
+		F.Intrinsic.Control.CallSub(RevertOptionsBack)
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.PullForecastSummaryData.End
+
+Program.Sub.RevertOptionsBack.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.sSQL.Declare
+	
+	F.Intrinsic.String.Build("Update OP_Header Set Ascii_Flag = '{0}' Where ID = '360020';",V.Global.sForecastPrefix,V.Local.sSQL)
+	F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	F.Intrinsic.String.Build("Update OP_Header Set Text1 = '{0}' Where ID = '360020';",V.Global.sForecastPrefix,V.Local.sSQL)
+	F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	F.Intrinsic.String.Build("Update OP_Header Set F_Numeric = {0} Where ID = '360020';",V.Global.iForecastSuffix,V.Local.sSQL)
+	F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.Control.CallSub(RemoveForecastData,"APS",True)
+		F.Intrinsic.Control.CallSub(SaveOriginalForecast)
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.RevertOptionsBack.End
+
+Program.Sub.SaveOriginalForecast.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	V.Local.sFile.Declare
+
+	F.Data.DataTable.SaveToDB("dtFORECAST","con","FORECAST","PARENT_PART*!*PART_FILL*!*LOCATION*!*DATE_DUE*!*FORECAST_TYPE*!*FORECAST_CUST*!*FORECAST_SHIPTO*!*FORECAST_EDI_FLAG",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTCOMMENTS","con","FORECAST_COMMENTS","ID",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTDEFAULTS","con","FORECAST_DEFAULTS","CUSTOMER*!*SHIP_TO*!*PART*!*LOCATION",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTDETAIL","con","FORECAST_DETAIL","ID*!*ID_SUFF",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTHEADER","con","FORECAST_HEADER","JOB*!*SUFFIX*!*FILLER1",32896)
+	'F.Data.DataTable.SaveToDB("dtFORECASTHISTORY","con","FORECAST_HISTORY","ID*!*LAST_CHG_DATE*!*LAST_CHG_TIME",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTIMPORTHDR","con","FORECAST_IMPORT_HDR","KEY_DATE*!*KEY_TIME",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTIMPORTLINE","con","FORECAST_IMPORT_LINE","KEY_DATE*!*KEY_TIME*!*KEY_SEQ",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTOPS","con","FORECAST_OPS","JOB*!*SUFFIX*!*SEQ*!*FILLER1*!*WO_INSERT",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTREQ","con","FORECAST_REQ","FO_PART*!*FO_LOCN*!*FO_NUMBER*!*FO_SUFFIX*!*FO_ORD_DATE*!*FO_SEQ",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTSUMMARY","con","FORECAST_SUMMARY","ID",32896)
+	F.Data.DataTable.SaveToDB("dtFORECASTXREF","con","FORECAST_XREF","ID*!*ID_SUFF*!*SEQ",32896)
+	
+	F.Data.DataTable.Close("dtFORECAST")
+	F.Data.DataTable.Close("dtFORECASTCOMMENTS")
+	F.Data.DataTable.Close("dtFORECASTDEFAULTS")
+	F.Data.DataTable.Close("dtFORECASTDETAIL")
+	F.Data.DataTable.Close("dtFORECASTHEADER")
+	F.Data.DataTable.Close("dtFORECASTHISTORY")
+	F.Data.DataTable.Close("dtFORECASTIMPORTHDR")
+	F.Data.DataTable.Close("dtFORECASTIMPORTLINE")
+	F.Data.DataTable.Close("dtFORECASTOPS")
+	F.Data.DataTable.Close("dtFORECASTREQ")
+	F.Data.DataTable.Close("dtFORECASTSUMMARY")
+	F.Data.DataTable.Close("dtFORECASTXREF")
+	
+	'Move History File
+	F.Intrinsic.File.CopyFile(V.Global.sBackupFile,V.Global.sGlobalFile)
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.Control.CallSub(CreateRemoveLock,"Action","REMOVE")
+		F.Intrinsic.Control.CallSub(RemoveForecastData,"APS",True)
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.SaveOriginalForecast.End
+
+Program.Sub.frmSummary_UnLoad.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	F.Intrinsic.Control.CallSub(frmForecastParts_UnLoad)
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.frmSummary_UnLoad.End
+
+Program.Sub.frmSummary_Resize.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	V.Local.fW.Declare
+	V.Local.fWBase.Declare
+	V.Local.fH.Declare
+	V.Local.fHBase.Declare
+	V.Local.fX.Declare
+	V.Local.fY.Declare
+	V.Local.fRet.Declare
+
+'	Gui.frmSummary.frameLabor.Size(Width,Heigth)
+'	Gui.frmSummary.frameLabor.Position(X,Y)
+
+	F.Intrinsic.Math.Sub(V.Screen.frmSummary.Width,10620,V.Local.fWBase)
+	F.Intrinsic.Math.Sub(V.Screen.frmSummary.Height,9195,V.Local.fHBase)
+	F.Intrinsic.Math.Div(V.Local.fHBase,2,V.Local.fHBase)
+	
+	'frameLabor
+	F.Intrinsic.Math.Add(10300,V.Local.fWBase,V.Local.fW)
+	F.Intrinsic.Math.Add(4155,V.Local.fHBase,V.Local.fH)
+	Gui.frmSummary.frameLabor.Size(V.Local.fW,V.Local.fH)
+	Gui.frmSummary.frameMaterial.Size(V.Local.fW,V.Local.fH)
+	
+	'frameMaterial
+	F.Intrinsic.Math.Add(V.Screen.frmSummary!frameLabor.Top,V.Screen.frmSummary!frameLabor.Height,0,V.Local.fY)
+	Gui.frmSummary.frameMaterial.Position(V.Screen.frmSummary!frameMaterial.Left,V.Local.fY)
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.frmSummary_Resize.End
+
+Program.Sub.LaborSummary.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.sValues.Declare
+	V.Local.iCnt.Declare
+	V.Local.sColumns.Declare
+	
+	'Set and Format Grid
+	Gui.frmSummary.GsGCLabor.AddGridViewFromDataTable("gvLbrSum","dtLbrSum")
+	Gui.frmSummary.GsGCLabor.Icon(V.Global.sGsGCIcon)
+	Gui.frmSummary.GsGCLabor.SuspendLayout()
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","MultiSelect",True)
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","Editable",False)
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","ReadOnly",True)
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","AllowSort",True)
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","AllowFilter",True)
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","OptionsDetailShowDetailTabs",False)
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","OptionsViewShowGroupPanel",True)
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","EnableAppearanceOddRow",True)
+	Gui.frmSummary.GsGCLabor.SetGridViewProperty("gvLbrSum","OptionsFindAlwaysVisible",False)
+	
+	'Loop through columns names by using the V.DataTable.dtName.FieldNames
+	F.Intrinsic.String.Split(V.DataTable.dtLbrSum.FieldNames,"*!*",V.Local.sColumns)
+	F.Intrinsic.Control.For(V.Local.iCnt,0,V.Local.sColumns.UBound,1)
+		Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum",V.Local.sColumns(V.Local.iCnt),"HeaderFontBold",True)
+		'Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum",V.Local.sColumns(V.Local.iCnt),"HeaderHAlignment","Center")
+	F.Intrinsic.Control.Next(V.Local.iCnt)
+	
+	'Part_Workcenter
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Part_Workcenter","Caption","WC/WG")
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Part_Workcenter","MinWidth","65")
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Part_Workcenter","HeaderHAlignment","Center")
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Part_Workcenter","CellHAlignment","Center")
+	
+'	'Description
+'	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Description","Caption","Description")
+'	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Description","MinWidth","130")
+'	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Description","HeaderHAlignment","Left")
+'	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Description","CellHAlignment","Left")
+	
+	'Hrs
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Hrs","Caption","Hours")
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Hrs","MinWidth","75")
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Hrs","HeaderHAlignment","Far")
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Hrs","CellHAlignment","Far")
+	Gui.frmSummary.GsGCLabor.SetColumnProperty("gvLbrSum","Hrs","DisplayCustomNumeric","#,###,##0.0000")
+	Gui.frmSummary.GsGCLabor.AddSummaryItem("gvLbrSum","Hrs","Hrs","SUM","","",n4)
+	
+	Gui.frmSummary.GsGCLabor.ResumeLayout()
+	Gui.frmSummary.GsGCLabor.MainView("gvLbrSum")
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.LaborSummary.End
+
+Program.Sub.MaterialSummary.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.sValues.Declare
+	V.Local.iCnt.Declare
+	V.Local.sColumns.Declare
+	
+	'Set and Format Grid
+	Gui.frmSummary.GsGCMaterial.AddGridViewFromDataTable("gvMatlSum","dtMatlSum")
+	Gui.frmSummary.GsGCMaterial.Icon(V.Global.sGsGCIcon)
+	Gui.frmSummary.GsGCMaterial.SuspendLayout()
+	Gui.frmSummary.GsGCMaterial.SetGridViewProperty("gvMatlSum","MultiSelect",True)
+	Gui.frmSummary.GsGCMaterial.SetGridViewProperty("gvMatlSum","AllowSort",True)
+	Gui.frmSummary.GsGCMaterial.SetGridViewProperty("gvMatlSum","AllowFilter",True)
+	Gui.frmSummary.GsGCMaterial.SetGridViewProperty("gvMatlSum","OptionsDetailShowDetailTabs",False)
+	Gui.frmSummary.GsGCMaterial.SetGridViewProperty("gvMatlSum","OptionsViewShowGroupPanel",True)
+	Gui.frmSummary.GsGCMaterial.SetGridViewProperty("gvMatlSum","EnableAppearanceOddRow",True)
+	Gui.frmSummary.GsGCMaterial.SetGridViewProperty("gvMatlSum","OptionsFindAlwaysVisible",False)
+'	Gui.frmSummary.GsGCMaterial.SetGridViewProperty("gvMatlSum","OptionsViewColumnAutoWidth",False)
+	
+	'Loop through columns names by using the V.DataTable.dtName.FieldNames
+	F.Intrinsic.String.Split(V.DataTable.dtMatlSum.FieldNames,"*!*",V.Local.sColumns)
+	F.Intrinsic.Control.For(V.Local.iCnt,0,V.Local.sColumns.UBound,1)
+		Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum",V.Local.sColumns(V.Local.iCnt),"HeaderFontBold",True)
+		'Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum",V.Local.sColumns(V.Local.iCnt),"HeaderHAlignment","Center")
+	F.Intrinsic.Control.Next(V.Local.iCnt)
+	
+	'FO_Part
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Part","Caption","Part")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Part","MinWidth","130")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Part","AllowEdit",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Part","ReadOnly",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Part","HeaderHAlignment","Left")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Part","CellHAlignment","Left")
+	
+	'FO_Locn
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Locn","Caption","Loc")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Locn","MinWidth","45")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Locn","AllowEdit",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Locn","ReadOnly",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Locn","HeaderHAlignment","Center")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","FO_Locn","CellHAlignment","Center")
+	
+'	'Description
+'	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Description","Caption","Description")
+'	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Description","MinWidth","175")
+'	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Description","AllowEdit",False)
+'	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Description","ReadOnly",True)
+'	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Description","HeaderHAlignment","Left")
+'	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Description","CellHAlignment","Left")
+	
+	'Product_Line
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Product_Line","Caption","PL")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Product_Line","MinWidth","45")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Product_Line","AllowEdit",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Product_Line","ReadOnly",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Product_Line","HeaderHAlignment","Center")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Product_Line","CellHAlignment","Center")
+	
+	'UM_Inventory
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","UM_Inventory","Caption","UM")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","UM_Inventory","MinWidth","45")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","UM_Inventory","AllowEdit",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","UM_Inventory","ReadOnly",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","UM_Inventory","HeaderHAlignment","Center")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","UM_Inventory","CellHAlignment","Center")
+	
+	'Quantity
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Quantity","Caption","Quantity")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Quantity","MinWidth","75")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Quantity","AllowEdit",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Quantity","ReadOnly",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Quantity","HeaderHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Quantity","CellHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Quantity","DisplayCustomNumeric","#,###,##0.00")
+	Gui.frmSummary.GsGCMaterial.AddSummaryItem("gvMatlSum","Quantity","Quantity","SUM","","",n2)
+	
+	'Qty_OnHand
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnHand","Caption","On Hand")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnHand","MinWidth","85")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnHand","AllowEdit",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnHand","ReadOnly",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnHand","HeaderHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnHand","CellHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnHand","DisplayCustomNumeric","#,###,##0.00")
+	
+	'Qty_OnOrder_PO
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_PO","Caption","On Order PO")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_PO","MinWidth","85")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_PO","AllowEdit",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_PO","ReadOnly",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_PO","HeaderHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_PO","CellHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_PO","DisplayCustomNumeric","#,###,##0.00")
+	
+	'Qty_OnOrder_WO
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_WO","Caption","On Order WO")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_WO","MinWidth","85")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_WO","AllowEdit",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_WO","ReadOnly",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_WO","HeaderHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_WO","CellHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_OnOrder_WO","DisplayCustomNumeric","#,###,##0.00")
+	
+	'Qty_Required
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_Required","Caption","Requirements")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_Required","MinWidth","95")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_Required","AllowEdit",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_Required","ReadOnly",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_Required","HeaderHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_Required","CellHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","Qty_Required","DisplayCustomNumeric","#,###,##0.00")
+	
+	'NET
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","NET","Caption","NET")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","NET","MinWidth","95")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","NET","AllowEdit",True)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","NET","ReadOnly",False)
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","NET","HeaderHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","NET","CellHAlignment","Far")
+	Gui.frmSummary.GsGCMaterial.SetColumnProperty("gvMatlSum","NET","DisplayCustomNumeric","#,###,##0.00")
+	
+	Gui.frmSummary.GsGCMaterial.ResumeLayout()
+	Gui.frmSummary.GsGCMaterial.MainView("gvMatlSum")
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.MaterialSummary.End
+
+Program.Sub.SetContextMenu.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	Gui.frmSummary..ContextMenuCreate("ctxLbr")
+	Gui.frmSummary.GsGCLabor.ContextMenuAttach("ctxLbr")
+	Gui.frmSummary..ContextMenuAddItem("ctxLbr","Export",0,"Export")
+	Gui.frmSummary..ContextMenuSetItemEventHandler("ctxLbr","Export","MenuClick")
+	
+	Gui.frmSummary..ContextMenuCreate("ctxMatl")
+	Gui.frmSummary.GsGCMaterial.ContextMenuAttach("ctxMatl")
+	Gui.frmSummary..ContextMenuAddItem("ctxMatl","Export",0,"Export")
+	Gui.frmSummary..ContextMenuSetItemEventHandler("ctxMatl","Export","MenuClick")
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.SetContextMenu.End
+
+Program.Sub.MenuClick.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	V.Local.sFileExport.Declare
+	V.Local.bExcel.Declare
+	V.Local.bFileLocked.Declare
+	V.Local.sMsg.Declare
+	V.Local.sControl.Declare
+	
+	F.Intrinsic.Control.SelectCase(V.Args.MenuName)
+		F.Intrinsic.Control.Case("CTXLBR")
+			V.Local.sControl.Set("GsGCLabor")
+		F.Intrinsic.Control.Case("CTXMATL")
+			V.Local.sControl.Set("GsGCMaterial")
+	F.Intrinsic.Control.EndSelect
+
+	F.Intrinsic.Control.SelectCase(V.Args.ItemName)
+		F.Intrinsic.Control.Case("EXPORT")
+			F.Automation.MSExcel.CheckPresence(V.Local.bExcel)
+			F.Intrinsic.Control.If(V.Local.bExcel)
+				F.Intrinsic.String.Build("{0}\GAB_5269_{1}_Export.xlsx",V.Caller.LocalGssTempDir,V.Local.sControl,V.Local.sFileExport)
+				F.Intrinsic.File.IsFileLocked(V.Local.sFileExport,V.Local.bFileLocked)
+				F.Intrinsic.Control.If(V.Local.bFileLocked)
+					F.Intrinsic.String.Build("File is already open. Please close and export again.{0}File: {1}",V.Ambient.NewLine,V.Local.sFileExport,V.Local.sMsg)
+					F.Intrinsic.UI.Msgbox(V.Local.sMsg,"File In Use")
+				F.Intrinsic.Control.Else
+					Gui.frmSummary.[V.Local.sControl].Export(V.Local.sFileExport,"xlsx")
+					F.Intrinsic.Task.ShellExec(0,"",V.Local.sFileExport,"","",1)
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Build("{0}\GAB_5269_{1}_Export.csv",V.Caller.LocalGssTempDir,V.Local.sControl,V.Local.sFileExport)
+				F.Intrinsic.File.IsFileLocked(V.Local.sFileExport,V.Local.bFileLocked)
+				F.Intrinsic.Control.If(V.Local.bFileLocked)
+					F.Intrinsic.String.Build("File is already open. Please close and export again.{0}File: {1}",V.Ambient.NewLine,V.Local.sFileExport,V.Local.sMsg)
+					F.Intrinsic.UI.Msgbox(V.Local.sMsg,"File In Use")
+				F.Intrinsic.Control.Else
+					Gui.frmSummary.[V.Local.sControl].Export(V.Local.sFileExport,"csv")
+				F.Intrinsic.Control.EndIf
+				F.Intrinsic.Task.ShellExec(0,"",V.Local.sFileExport,"","",1)
+			F.Intrinsic.Control.EndIf
+			
+	F.Intrinsic.Control.EndSelect
+
+	F.Intrinsic.Control.CatchWhen(5700)
+		F.Intrinsic.UI.Msgbox("Please load data.","Export Error")
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.MenuClick.End
+
+Program.Sub.Comments.Start
+${$5$}$2.0.0.0$}$2
+${$6$}$avaldez$}$20190416113101822$}$CBUu04veoT9NExad5Mkb3ylWEN0INN4AyfOkGO2bWwm9cdzZ0hUePqf2efLnPkLD8hSFWiP3L9w=
+Program.Sub.Comments.End
